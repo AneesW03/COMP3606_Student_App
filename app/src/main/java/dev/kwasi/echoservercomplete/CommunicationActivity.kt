@@ -45,6 +45,7 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
     private var server: Server? = null
     private var client: Client? = null
     private var deviceIp: String = ""
+    private var isValidID = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,9 +67,9 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         rvPeerList.layoutManager = LinearLayoutManager(this)
 
         chatListAdapter = ChatListAdapter()
-        val rvChatList: RecyclerView = findViewById(R.id.rvChat)
-        rvChatList.adapter = chatListAdapter
-        rvChatList.layoutManager = LinearLayoutManager(this)
+       // val rvChatList: RecyclerView = findViewById(R.id.rvChat)
+    //    rvChatList.adapter = chatListAdapter
+      //  rvChatList.layoutManager = LinearLayoutManager(this)
     }
 
     override fun onResume() {
@@ -84,11 +85,12 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
             unregisterReceiver(it)
         }
     }
+
     fun createGroup(view: View) {
         wfdManager?.createGroup()
     }
 
-    fun discoverNearbyPeers(view: View) {
+    private fun discoverNearbyPeers() {
         wfdManager?.discoverPeers()
     }
 
@@ -104,25 +106,25 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         val wfdAdapterErrorView:ConstraintLayout = findViewById(R.id.clWfdAdapterDisabled)
         wfdAdapterErrorView.visibility = if (!wfdAdapterEnabled) View.VISIBLE else View.GONE
 
-        val wfdNoConnectionView:ConstraintLayout = findViewById(R.id.clNoWifiDirectConnection)
+        val wfdNoConnectionView:ConstraintLayout = findViewById(R.id.StudentInfoPage)
         wfdNoConnectionView.visibility = if (wfdAdapterEnabled && !wfdHasConnection) View.VISIBLE else View.GONE
 
         val rvPeerList: RecyclerView= findViewById(R.id.rvPeerListing)
-        rvPeerList.visibility = if (wfdAdapterEnabled && !wfdHasConnection && hasDevices) View.VISIBLE else View.GONE
+        rvPeerList.visibility = if (wfdAdapterEnabled && !wfdHasConnection && hasDevices && isValidID) View.VISIBLE else View.GONE
 
-        val wfdConnectedView:ConstraintLayout = findViewById(R.id.clHasConnection)
-        wfdConnectedView.visibility = if(wfdHasConnection)View.VISIBLE else View.GONE
+       // val wfdConnectedView:ConstraintLayout = findViewById(R.id.clHasConnection)
+      //  wfdConnectedView.visibility = if(wfdHasConnection)View.VISIBLE else View.GONE
     }
 
-    fun sendMessage(view: View) {
-        val etMessage:EditText = findViewById(R.id.etMessage)
-        val etString = etMessage.text.toString()
-        val content = ContentModel(etString, deviceIp)
-        etMessage.text.clear()
-        client?.sendMessage(content)
-        chatListAdapter?.addItemToEnd(content)
+    //fun sendMessage(view: View) {
+        //val etMessage:EditText = findViewById(R.id.etMessage)
+       // val etString = etMessage.text.toString()
+       // val content = ContentModel(etString, deviceIp)
+     //   etMessage.text.clear()
+      //  client?.sendMessage(content)
+      //  chatListAdapter?.addItemToEnd(content)
 
-    }
+    //}
 
     override fun onWiFiDirectStateChanged(isEnabled: Boolean) {
         wfdAdapterEnabled = isEnabled
@@ -177,11 +179,25 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         wfdManager?.connectToPeer(peer)
     }
 
-
     override fun onContent(content: ContentModel) {
         runOnUiThread{
             chatListAdapter?.addItemToEnd(content)
         }
     }
 
+    fun checkStudentID(view: View) {
+        val input:EditText = findViewById(R.id.StudentIDInput)
+        val studentID = input.text.toString()
+
+        if(studentID.startsWith("816") && studentID.length == 9) {
+            isValidID = true
+            discoverNearbyPeers()
+        }
+        else {
+            isValidID = false
+            val toast = Toast.makeText(this, "Invalid Student ID", Toast.LENGTH_SHORT)
+            toast.show()
+            updateUI()
+        }
+    }
 }
