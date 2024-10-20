@@ -8,6 +8,7 @@ import android.net.wifi.p2p.WifiP2pManager
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -67,9 +68,9 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         rvPeerList.layoutManager = LinearLayoutManager(this)
 
         chatListAdapter = ChatListAdapter()
-       // val rvChatList: RecyclerView = findViewById(R.id.rvChat)
-    //    rvChatList.adapter = chatListAdapter
-      //  rvChatList.layoutManager = LinearLayoutManager(this)
+        val rvChatList: RecyclerView = findViewById(R.id.rvChat)
+        rvChatList.adapter = chatListAdapter
+        rvChatList.layoutManager = LinearLayoutManager(this)
     }
 
     override fun onResume() {
@@ -112,19 +113,20 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         val rvPeerList: RecyclerView= findViewById(R.id.rvPeerListing)
         rvPeerList.visibility = if (wfdAdapterEnabled && !wfdHasConnection && hasDevices && isValidID) View.VISIBLE else View.GONE
 
-       // val wfdConnectedView:ConstraintLayout = findViewById(R.id.clHasConnection)
-      //  wfdConnectedView.visibility = if(wfdHasConnection)View.VISIBLE else View.GONE
+        val wfdConnectedView:ConstraintLayout = findViewById(R.id.clHasConnection)
+        wfdConnectedView.visibility  = if(wfdHasConnection) View.VISIBLE else View.GONE
+
     }
 
-    //fun sendMessage(view: View) {
-        //val etMessage:EditText = findViewById(R.id.etMessage)
-       // val etString = etMessage.text.toString()
-       // val content = ContentModel(etString, deviceIp)
-     //   etMessage.text.clear()
-      //  client?.sendMessage(content)
-      //  chatListAdapter?.addItemToEnd(content)
+    fun sendMessage(view: View) {
+        val etMessage:EditText = findViewById(R.id.etMessage)
+        val etString = etMessage.text.toString()
+        val content = ContentModel(etString, deviceIp)
+        etMessage.text.clear()
+        client?.sendMessage(content)
+        chatListAdapter?.addItemToEnd(content)
 
-    //}
+    }
 
     override fun onWiFiDirectStateChanged(isEnabled: Boolean) {
         wfdAdapterEnabled = isEnabled
@@ -168,6 +170,11 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
             client = Client(this)
             deviceIp = client!!.ip
         }
+        
+        if (groupInfo != null) {
+            setClassTitle(groupInfo.owner.deviceName)
+            updateUI()
+        }
     }
 
     override fun onDeviceStatusChanged(thisDevice: WifiP2pDevice) {
@@ -182,6 +189,7 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
     override fun onContent(content: ContentModel) {
         runOnUiThread{
             chatListAdapter?.addItemToEnd(content)
+            updateUI()
         }
     }
 
@@ -199,5 +207,11 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
             toast.show()
             updateUI()
         }
+    }
+
+    private fun setClassTitle(owner: String ) {
+        val view: TextView = findViewById(R.id.classTitle)
+        val string = "Currently Attending: $owner"
+        view.text = string
     }
 }
