@@ -14,6 +14,7 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.SecretKey
 import javax.crypto.Cipher
 import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 class Client (private val networkMessageInterface: NetworkMessageInterface){
     private lateinit var clientSocket: Socket
@@ -27,7 +28,28 @@ class Client (private val networkMessageInterface: NetworkMessageInterface){
             reader = clientSocket.inputStream.bufferedReader()
             writer = clientSocket.outputStream.bufferedWriter()
             ip = clientSocket.inetAddress.hostAddress!!
+
+            sendMessage(ContentModel("I am here", ip))
+            val challengeResponse = reader.readLine()
+            if (challengeResponse != null) {
+                val serverContent = Gson().fromJson(challengeResponse, ContentModel::class.java)
+                val challenge = serverContent.message // The random number R from server
+
+                // 3. Hash the student ID and generate the AES key and IV
+                val studentID = "816030569" // Use actual student ID here
+                val hashedStudentID = hashStrSha256(studentID)
+                val aesKey = generateAESKey(hashedStudentID)
+                val aesIv = generateIV(hashedStudentID) // Assume IV can be derived from hash as well
+
+                // 4. Encrypt the challenge (R) using AES
+                val encryptedChallenge = encryptMessage(challenge, aesKey, aesIv)
+
+                // 5. Send the encrypted challenge back to the server
+                sendMessage(ContentModel(encryptedChallenge, ip))
+            }
+
             while(true){
+
                 try{
                     val serverResponse = reader.readLine()
                     if (serverResponse != null){
@@ -80,6 +102,7 @@ class Client (private val networkMessageInterface: NetworkMessageInterface){
         return IvParameterSpec(first16Chars.toByteArray())
     }
 
+    @OptIn(ExperimentalEncodingApi::class)
     fun encryptMessage(plaintext: String, aesKey:SecretKey, aesIv: IvParameterSpec):String{
         val plainTextByteArr = plaintext.toByteArray()
 
