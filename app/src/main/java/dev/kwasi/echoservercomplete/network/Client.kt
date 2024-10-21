@@ -22,6 +22,11 @@ class Client (private val networkMessageInterface: NetworkMessageInterface){
     private lateinit var writer: BufferedWriter
     var ip:String = ""
 
+    private var studentID = "816030569"
+    private var seed = hashStrSha256(studentID)
+    private var aesKey = generateAESKey(seed)
+    private var aesIv = generateIV(seed)
+
     init {
         thread {
             clientSocket = Socket("192.168.49.1", Server.PORT)
@@ -33,28 +38,20 @@ class Client (private val networkMessageInterface: NetworkMessageInterface){
             val challengeResponse = reader.readLine()
             if (challengeResponse != null) {
                 val serverContent = Gson().fromJson(challengeResponse, ContentModel::class.java)
-                val challenge = serverContent.message // The random number R from server
-
-                // 3. Hash the student ID and generate the AES key and IV
-                val studentID = "816030569" // Use actual student ID here
-                val hashedStudentID = hashStrSha256(studentID)
-                val aesKey = generateAESKey(hashedStudentID)
-                val aesIv = generateIV(hashedStudentID) // Assume IV can be derived from hash as well
-
-                // 4. Encrypt the challenge (R) using AES
+                val challenge = serverContent.message
                 val encryptedChallenge = encryptMessage(challenge, aesKey, aesIv)
-
-                // 5. Send the encrypted challenge back to the server
                 sendMessage(ContentModel(encryptedChallenge, ip))
             }
 
             while(true){
-
                 try{
                     val serverResponse = reader.readLine()
                     if (serverResponse != null){
                         val serverContent = Gson().fromJson(serverResponse, ContentModel::class.java)
-                        networkMessageInterface.onContent(serverContent)
+                        val encryptedMessage = serverContent.message
+                        val decryptedMessage = decryptMessage(encryptedMessage, aesKey, aesIv)
+                        serverContent.message = decryptedMessage
+                        /* networkMessageInterface.onContent(serverContent) */
                     }
                 } catch(e: Exception){
                     Log.e("CLIENT", "An error has occurred in the client")
@@ -70,11 +67,12 @@ class Client (private val networkMessageInterface: NetworkMessageInterface){
             if (!clientSocket.isConnected){
                 throw Exception("We aren't currently connected to the server!")
             }
+            //networkMessageInterface.onContent(content)
+            content.message = encryptMessage(content.message, aesKey, aesIv)
             val contentAsStr:String = Gson().toJson(content)
             writer.write("$contentAsStr\n")
             writer.flush()
         }
-
     }
 
     fun close(){
@@ -113,4 +111,15 @@ class Client (private val networkMessageInterface: NetworkMessageInterface){
         return Base64.Default.encode(encrypt)
     }
 
+    @OptIn(ExperimentalEncodingApi::class)
+    fun decryptMessage(encryptedText: String, aesKey: SecretKey, aesIv: IvParameterSpec): String {
+        val textToDecrypt = Base64.Default.decode(encryptedText)
+
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING")
+
+        cipher.init(Cipher.DECRYPT_MODE, aesKey, aesIv)
+
+        val decrypt = cipher.doFinal(textToDecrypt)
+        return String(decrypt)
+    }
 }
